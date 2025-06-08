@@ -1,0 +1,9 @@
+{
+  "domain": "minidsp",
+  "name": "MiniDSP",
+  "version": "0.1.0",
+  "config_flow": true,
+  "iot_class": "local_push",
+  "codeowners": ["@yourusername"],
+  "requirements": []
+}

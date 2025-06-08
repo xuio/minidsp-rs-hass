@@ -1,0 +1,6 @@
+{
+  "name": "MiniDSP RS",
+  "homeassistant": "2024.8",
+  "render_readme": true,
+  "zip_release": false
+}
