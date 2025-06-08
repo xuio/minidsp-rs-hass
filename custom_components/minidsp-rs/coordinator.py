@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import MiniDSPAPI
-from .const import DOMAIN, SCAN_INTERVAL_SECONDS
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class MiniDSPCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             hass,
             _LOGGER,
             name=name or DOMAIN,
-            update_interval=timedelta(seconds=SCAN_INTERVAL_SECONDS),
+            update_interval=None,
         )
         self._api = api
         self._unsubscribe_ws: callable | None = None
@@ -56,7 +55,28 @@ class MiniDSPCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if new_list != current.get(key):
                         current[key] = new_list
                         updated = True
-            # Some versions send nested dict {"levels": {"input_levels": [...], "output_levels": [...]}}
+
+            # Handle master status updates
+            if "master_status" in event or "master" in event:
+                incoming_master = event.get("master_status") or event.get("master")
+                if isinstance(incoming_master, dict):
+                    if "master" not in current or not isinstance(
+                        current["master"], dict
+                    ):
+                        current["master"] = {}
+
+                    # Round numeric fields and merge
+                    merged_master = dict(current["master"])
+                    for m_key, m_val in incoming_master.items():
+                        if isinstance(m_val, (int, float)):
+                            m_val = int(round(m_val))
+                        merged_master[m_key] = m_val
+
+                    if merged_master != current["master"]:
+                        current["master"] = merged_master
+                        updated = True
+
+            # Nested levels dict
             if "levels" in event and isinstance(event["levels"], dict):
                 for key in ("input_levels", "output_levels"):
                     if key in event["levels"]:
@@ -67,6 +87,7 @@ class MiniDSPCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if new_list != current.get(key):
                             current[key] = new_list
                             updated = True
+
             if updated:
                 # Push incremental update to listeners
                 self.async_set_updated_data(current)
