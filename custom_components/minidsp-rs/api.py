@@ -60,6 +60,11 @@ class MiniDSPAPI:
     async def async_set_preset(self, preset: int) -> None:
         await self.async_post_config({"master_status": {"preset": preset}})
 
+    async def async_set_output_gain(self, output_index: int, gain: float) -> None:
+        await self.async_post_config(
+            {"outputs": [{"index": output_index, "gain": gain}]}
+        )
+
     # ----------------------- websocket handling -------------------------
 
     async def async_subscribe_levels(
@@ -157,4 +162,4 @@ class MiniDSPAPI:
             scheme = ""
             rest = self._base_url
 
-        return f"{scheme}{rest}/devices/{self._device_index}?levels=true&poll=true"
+        return f"{scheme}{rest}/devices/{self._device_index}?levels=true"

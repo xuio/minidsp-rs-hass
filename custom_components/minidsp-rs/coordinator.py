@@ -76,6 +76,11 @@ class MiniDSPCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         current["master"] = merged_master
                         updated = True
 
+            # Handle outputs updates
+            if "outputs" in event and isinstance(event["outputs"], list):
+                current["outputs"] = event["outputs"]
+                updated = True
+
             # Nested levels dict
             if "levels" in event and isinstance(event["levels"], dict):
                 for key in ("input_levels", "output_levels"):
