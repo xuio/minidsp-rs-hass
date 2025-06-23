@@ -162,4 +162,4 @@ class MiniDSPAPI:
             scheme = ""
             rest = self._base_url
 
-        return f"{scheme}{rest}/devices/{self._device_index}?levels=true"
+        return f"{scheme}{rest}/devices/{self._device_index}?levels=true&poll=true"
