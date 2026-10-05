@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_URL
@@ -9,7 +10,17 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import MiniDSPAPI
-from .const import DOMAIN
+from .const import (
+    CONF_POLL_INTERVAL,
+    CONF_SERVER_UPDATES,
+    DEFAULT_POLL_INTERVAL,
+    DEFAULT_SERVER_UPDATES,
+    DOMAIN,
+    POLL_OFF,
+    SERVER_BOTH,
+    SERVER_LEVELS,
+    SERVER_STATUS,
+)
 from .coordinator import MiniDSPCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,9 +48,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Config entry missing base URL")
         raise ConfigEntryNotReady
 
+    options = entry.options or {}
+    server_updates = options.get(CONF_SERVER_UPDATES, DEFAULT_SERVER_UPDATES)
+    poll_interval = options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
+    stream_levels = server_updates in (SERVER_LEVELS, SERVER_BOTH)
+
     session = async_get_clientsession(hass)
-    api = MiniDSPAPI(base_url, session)
-    coordinator = MiniDSPCoordinator(hass, api, name=entry.title)
+    api = MiniDSPAPI(
+        base_url,
+        session,
+        stream_levels=stream_levels,
+        poll_status=server_updates in (SERVER_STATUS, SERVER_BOTH),
+    )
+    update_interval = (
+        None if poll_interval == POLL_OFF else timedelta(seconds=int(poll_interval))
+    )
+    coordinator = MiniDSPCoordinator(
+        hass, api, name=entry.title, update_interval=update_interval
+    )
 
     try:
         await coordinator.async_config_entry_first_refresh()
@@ -51,6 +77,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "api": api,
+        # Level sensors only make sense if something keeps the levels updated
+        "levels_updated": stream_levels or poll_interval != POLL_OFF,
     }
 
     # Forward media_player first to make it appear first in UI entity list

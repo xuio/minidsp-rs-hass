@@ -5,9 +5,19 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_URL, CONF_NAME
+from homeassistant.core import callback
+from homeassistant.helpers import selector
 import voluptuous as vol
 
-from .const import DOMAIN
+from .const import (
+    CONF_POLL_INTERVAL,
+    CONF_SERVER_UPDATES,
+    DEFAULT_POLL_INTERVAL,
+    DEFAULT_SERVER_UPDATES,
+    DOMAIN,
+    POLL_INTERVALS,
+    SERVER_UPDATES,
+)
 
 from homeassistant import config_entries
 
@@ -18,6 +28,14 @@ class MiniDSPConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for the MiniDSP integration."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> MiniDSPOptionsFlow:
+        """Return the options flow handler."""
+        return MiniDSPOptionsFlow(config_entry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -46,20 +64,33 @@ class MiniDSPOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):  # type: ignore[override]
         if user_input is not None:
-            # Persist new URL in options
-            return self.async_create_entry(
-                title="", data={CONF_URL: user_input[CONF_URL]}
-            )
+            return self.async_create_entry(title="", data=user_input)
 
-        current_url = self._entry.options.get(
-            CONF_URL, self._entry.data.get(CONF_URL, "")
+        options = self._entry.options
+        current_url = options.get(CONF_URL, self._entry.data.get(CONF_URL, ""))
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_URL, default=current_url): str,
+                vol.Required(
+                    CONF_SERVER_UPDATES,
+                    default=options.get(CONF_SERVER_UPDATES, DEFAULT_SERVER_UPDATES),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=SERVER_UPDATES,
+                        translation_key=CONF_SERVER_UPDATES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_POLL_INTERVAL,
+                    default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=POLL_INTERVALS,
+                        translation_key=CONF_POLL_INTERVAL,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
         )
-        schema = vol.Schema({vol.Required(CONF_URL, default=current_url): str})
         return self.async_show_form(step_id="init", data_schema=schema)
-
-
-# Hook for Home Assistant to retrieve the options flow
-
-
-async def async_get_options_flow(config_entry: config_entries.ConfigEntry):  # type: ignore[override]
-    return MiniDSPOptionsFlow(config_entry)

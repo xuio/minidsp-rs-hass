@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -18,12 +19,18 @@ _LOGGER = logging.getLogger(__name__)
 class MiniDSPCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator to manage MiniDSP data fetching and live updates."""
 
-    def __init__(self, hass: HomeAssistant, api: MiniDSPAPI, name: str | None = None):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: MiniDSPAPI,
+        name: str | None = None,
+        update_interval: timedelta | None = None,
+    ):
         super().__init__(
             hass,
             _LOGGER,
             name=name or DOMAIN,
-            update_interval=None,
+            update_interval=update_interval,
         )
         self._api = api
         self._unsubscribe_ws: callable | None = None

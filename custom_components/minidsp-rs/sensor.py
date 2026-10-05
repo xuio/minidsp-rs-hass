@@ -55,6 +55,10 @@ async def async_setup_entry(
         _LOGGER.error("Coordinator not found during sensor platform setup")
         return
 
+    # Neither minidspd nor Home Assistant polls the levels: the sensors would never change
+    if not stored.get("levels_updated", True):
+        return
+
     # Determine how many channels we have based on initial data
     data = coordinator.data or {}
 

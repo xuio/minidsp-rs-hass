@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "url": "MiniDSP-RS URL",
+          "name": "Name"
+        },
+        "data_description": {
+          "url": "Address of minidspd's HTTP server, starting with ws:// and including the port (5380 unless you changed it in minidspd's config), for example ws://192.168.1.50:5380"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "url": "MiniDSP-RS URL",
+          "server_updates": "minidspd updates",
+          "poll_interval": "Home Assistant polling"
+        },
+        "data_description": {
+          "url": "Address of minidspd's HTTP server, starting with ws:// and including the port (5380 unless you changed it in minidspd's config), for example ws://192.168.1.50:5380",
+          "server_updates": "What minidspd reads from the device and pushes to Home Assistant. Status: volume, source, mute and preset, read every 2 s and sent when they change. Levels: input and output levels, read every 250 ms.",
+          "poll_interval": "How often Home Assistant fetches the status itself. Each fetch reads the status and the levels. Changes made with the IR remote or from Home Assistant show up with everything off; the settings only matter for changes made by other apps and for the level sensors, which are not created when neither setting updates the levels."
+        }
+      }
+    }
+  },
+  "selector": {
+    "server_updates": {
+      "options": {
+        "off": "Off",
+        "status": "Status (every 2 s)",
+        "levels": "Levels (every 250 ms)",
+        "both": "Status + levels"
+      }
+    },
+    "poll_interval": {
+      "options": {
+        "off": "Off",
+        "2": "Every 2 s",
+        "10": "Every 10 s",
+        "60": "Every 60 s"
+      }
+    }
+  }
+}

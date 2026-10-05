@@ -14,12 +14,20 @@ class MiniDSPAPI:
     """Simple async wrapper around the minidsp-rs HTTP & WebSocket API."""
 
     def __init__(
-        self, base_url: str, session: aiohttp.ClientSession, device_index: int = 0
+        self,
+        base_url: str,
+        session: aiohttp.ClientSession,
+        device_index: int = 0,
+        *,
+        stream_levels: bool = True,
+        poll_status: bool = True,
     ):
         # Normalise base url (strip trailing slash)
         self._base_url = base_url.rstrip("/")
         self._session = session
         self._device_index = device_index
+        self._stream_levels = stream_levels
+        self._poll_status = poll_status
         self._ws_task: asyncio.Task | None = None
         self._listeners: list[
             Callable[[dict[str, Any]], Coroutine[Any, Any, None]]
@@ -91,9 +99,14 @@ class MiniDSPAPI:
 
     async def async_disconnect(self) -> None:
         """Cancel the websocket task (if any)."""
+        self._stop_event.set()
         if self._ws_task and not self._ws_task.done():
-            self._stop_event.set()
-            await self._ws_task
+            # Cancel instead of waiting for the task to notice the stop event: it only
+            # checks it between connections, and with level/status polling off the
+            # socket can stay silent until the heartbeat gives up (~45 s), stalling
+            # unload/reload. Cancelling a pending receive closes the socket right away.
+            self._ws_task.cancel()
+            await asyncio.wait([self._ws_task])
 
     # ---------------------------------------------------------------------
 
@@ -162,4 +175,12 @@ class MiniDSPAPI:
             scheme = ""
             rest = self._base_url
 
-        return f"{scheme}{rest}/devices/{self._device_index}?levels=true&poll=true"
+        # minidspd checks these parameters for presence, not value (`levels=false`
+        # still streams levels), so a disabled one is left out entirely.
+        params = []
+        if self._stream_levels:
+            params.append("levels=true")  # input/output levels every 250 ms
+        if self._poll_status:
+            params.append("poll=true")  # master status every 2 s
+        query = f"?{'&'.join(params)}" if params else ""
+        return f"{scheme}{rest}/devices/{self._device_index}{query}"
